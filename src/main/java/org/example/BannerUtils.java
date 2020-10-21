@@ -27,8 +27,9 @@ public class BannerUtils {
                 + "&pageMaxSize=" + 500 + "&sortColumn=subjectDescription&sortDirection=asc";
     }
 
+    public static final String DIR_JSON = "json";
     // File Names
-    public static final String FILE_TERMS = "terms.json";
+    public static final String FILE_TERMS = DIR_JSON + "/" + "terms.json";
 
 
     // Private fields
@@ -40,6 +41,12 @@ public class BannerUtils {
     public BannerUtils() throws IOException {
         objectMapper = new ObjectMapper();
         initTermsFromFile(FILE_TERMS);
+    }
+
+    public void testFileLocator() {
+        if (new File(FILE_TERMS).exists()) {
+            System.out.println("Found it");
+        }
     }
 
     public void init() throws IOException {
@@ -110,7 +117,7 @@ public class BannerUtils {
     public void read() throws IOException {
         for (int term : terms) {
             int pageOffset = 0; // the index to start from
-            String fileName = term + "-" + pageOffset + ".json";
+            String fileName = DIR_JSON + "/" + term + "-" + pageOffset + ".json";
             int totalCount = 4000;
             boolean setTotalCountOnce = true;
             do {
@@ -136,7 +143,7 @@ public class BannerUtils {
                 }
                 totalCount -= 500;
                 pageOffset += 500;
-                fileName = term + "-" + pageOffset + ".json";
+                fileName = DIR_JSON + "/" + term + "-" + pageOffset + ".json";
             } while (totalCount > 0);
         }
     }
