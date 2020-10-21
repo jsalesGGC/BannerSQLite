@@ -8,7 +8,8 @@ import java.io.IOException;
 public class App {
     public static void main(String[] args) throws IOException {
         BannerUtils bannerUtils = new BannerUtils();
-        bannerUtils.review();
-        bannerUtils.prune();
+//        bannerUtils.init();
+//        bannerUtils.prune();
+        bannerUtils.read();
     }
 }

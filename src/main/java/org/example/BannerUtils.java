@@ -15,72 +15,44 @@ public class BannerUtils {
     public static final String DOMAIN = "ggc.gabest.usg.edu";
     public static final String PATH = "/StudentRegistrationSsb/ssb";
     public static final String URL_API = PROTOCOL + DOMAIN + PATH;
-    public static final String URL_API_SELECT_TERM = URL_API + "/term/search?mode=search";
 
+    // API Calls
+    public static final String URL_API_GET_TERMS = URL_API + "/classSearch/getTerms?offset=1&max=500&searchTerm=";
+    public static final String URL_API_POST_TERM_COOKIE = URL_API + "/term/search?mode=search";
+
+    // API Call Builder
+    public static String createSearchResultsApiUrl(int term, int pageOffset) {
+        return URL_API + "/searchResults/searchResults?txt_subject=&txt_courseNumber=&txt_term=" + term
+                + "&startDatepicker=&endDatepicker=&pageOffset=" + pageOffset
+                + "&pageMaxSize=" + 500 + "&sortColumn=subjectDescription&sortDirection=asc";
+    }
+
+    // File Names
     public static final String FILE_TERMS = "terms.json";
 
-    public int[] terms;
 
+    // Private fields
     private ObjectMapper objectMapper;
 
-    public BannerUtils() {
+    // Properties
+    private int[] terms;
+
+    public BannerUtils() throws IOException {
         objectMapper = new ObjectMapper();
+        initTermsFromFile(FILE_TERMS);
     }
 
     public void init() throws IOException {
-        if (!new File(FILE_TERMS).exists()) {
-            String jsonTerms = IOUtils.toString(new URL(createTermsApiUrl()), "UTF-8");
-            buildFileFromJsonString(FILE_TERMS, jsonTerms);
-        }
-        initTermsFromFile(FILE_TERMS);
-
-//        for (int term : terms) {
-        int term = 200608;
-        int pageOffset = 0; // the index to start from
-        String fileName = term + "-" + pageOffset + ".json";
-        int totalCount = 1000;
-        boolean setTotalCountOnce = true;
-        boolean overWrite = true;
-
-        do {
-            if (!new File(fileName).exists() || overWrite) {
-                String searchResultsApiUrl = createSearchResultsApiUrl(term, pageOffset);
-                String termCookie = fetchTermCookie(URL_API_SELECT_TERM, term);
-                String courseDataOfTerm = fetchCourseDataOfTerm(searchResultsApiUrl, termCookie);
-                JsonNode data = objectMapper.readTree(courseDataOfTerm);
-                if (setTotalCountOnce) {
-                    totalCount = Integer.parseInt(data.get("totalCount").asText());
-                    setTotalCountOnce = false;
-                }
-                buildFileFromJsonString(fileName, courseDataOfTerm);
-                objectMapper.writeValue(new File(fileName), data);
-            }
-            totalCount -= 500;
-            pageOffset += 500;
-            fileName = term + "-" + pageOffset + ".json";
-        } while (totalCount > 0);
-//        }
-
-    }
-
-    public void review() throws IOException {
-        if (!new File(FILE_TERMS).exists()) {
-            String jsonTerms = IOUtils.toString(new URL(createTermsApiUrl()), "UTF-8");
-            buildFileFromJsonString(FILE_TERMS, jsonTerms);
-        }
-        initTermsFromFile(FILE_TERMS);
-
         for (int term : terms) {
             int pageOffset = 0; // the index to start from
             String fileName = term + "-" + pageOffset + ".json";
             int totalCount = 1000;
             boolean setTotalCountOnce = true;
-            boolean overWrite = false;
 
             do {
                 if (!new File(fileName).exists()) {
                     String searchResultsApiUrl = createSearchResultsApiUrl(term, pageOffset);
-                    String termCookie = fetchTermCookie(URL_API_SELECT_TERM, term);
+                    String termCookie = fetchTermCookie(URL_API_POST_TERM_COOKIE, term);
                     String courseDataOfTerm = fetchCourseDataOfTerm(searchResultsApiUrl, termCookie);
                     JsonNode data = objectMapper.readTree(courseDataOfTerm);
                     if (setTotalCountOnce) {
@@ -98,7 +70,7 @@ public class BannerUtils {
                     }
                     if (Integer.parseInt(fileData.get("totalCount").asText()) == 0) {
                         String searchResultsApiUrl = createSearchResultsApiUrl(term, pageOffset);
-                        String termCookie = fetchTermCookie(URL_API_SELECT_TERM, term);
+                        String termCookie = fetchTermCookie(URL_API_POST_TERM_COOKIE, term);
                         String courseDataOfTerm = fetchCourseDataOfTerm(searchResultsApiUrl, termCookie);
                         JsonNode data = objectMapper.readTree(courseDataOfTerm);
                         buildFileFromJsonString(fileName, courseDataOfTerm);
@@ -109,35 +81,20 @@ public class BannerUtils {
                 totalCount -= 500;
                 pageOffset += 500;
                 fileName = term + "-" + pageOffset + ".json";
-                overWrite = false;
             } while (totalCount > 0);
         }
     }
 
     public void prune() throws IOException {
-        if (!new File(FILE_TERMS).exists()) {
-            String jsonTerms = IOUtils.toString(new URL(createTermsApiUrl()), "UTF-8");
-            buildFileFromJsonString(FILE_TERMS, jsonTerms);
-        }
-        initTermsFromFile(FILE_TERMS);
-        int[] termss = {201802};
-
         for (int term : terms) {
             int pageOffset = 0; // the index to start from
             String fileName = term + "-" + pageOffset + ".json";
             int totalCount = 4000;
             boolean setTotalCountOnce = true;
-            boolean overWrite = false;
-
             do {
                 if (!new File(fileName).exists()) {
                 } else {
                     JsonNode fileData = objectMapper.readTree(new File(fileName));
-                    if (setTotalCountOnce) {
-//                        totalCount = Integer.parseInt(fileData.get("totalCount").asText());
-//                        System.out.println("settotalcount" + totalCount);
-                        setTotalCountOnce = false;
-                    }
                     if (fileData.get("data").size() == 0) {
                         System.out.println("Deleted: " + fileName);
                         new File(fileName).delete();
@@ -146,19 +103,42 @@ public class BannerUtils {
                 totalCount -= 500;
                 pageOffset += 500;
                 fileName = term + "-" + pageOffset + ".json";
-                overWrite = false;
             } while (totalCount > 0);
         }
     }
 
-    public String createTermsApiUrl() {
-        return URL_API + "/classSearch/getTerms?offset=1&max=500&searchTerm=";
-    }
-
-    public String createSearchResultsApiUrl(int term, int pageOffset) {
-        return URL_API + "/searchResults/searchResults?txt_subject=&txt_courseNumber=&txt_term=" + term
-                + "&startDatepicker=&endDatepicker=&pageOffset=" + pageOffset
-                + "&pageMaxSize=" + 500 + "&sortColumn=subjectDescription&sortDirection=asc";
+    public void read() throws IOException {
+        for (int term : terms) {
+            int pageOffset = 0; // the index to start from
+            String fileName = term + "-" + pageOffset + ".json";
+            int totalCount = 4000;
+            boolean setTotalCountOnce = true;
+            do {
+                if (!new File(fileName).exists()) {
+                } else {
+                    JsonNode fileData = objectMapper.readTree(new File(fileName));
+                    JsonNode termPageData = fileData.get("data");
+                    for (int i = 0; i < termPageData.size(); i++) {
+                        JsonNode faculty = termPageData.get(i).get("faculty");
+                        for (int j = 0; j < faculty.size(); j++) {
+                            if (faculty.get(j).get("displayName").asText().contains("Tacksoo")) {
+                                System.out.print("Term:" + termPageData.get(i).get("termDesc").asText() + " ");
+                                System.out.print("ID:" + termPageData.get(i).get("courseReferenceNumber").asText() + " ");
+                                System.out.print("Subject:" + termPageData.get(i).get("subjectDescription").asText() + " ");
+                                System.out.print("Title:" + termPageData.get(i).get("courseTitle").asText() + " ");
+                                System.out.print("CourseNumber:" + termPageData.get(i).get("courseNumber").asText() + " ");
+                                System.out.print("Credit Hours:" + termPageData.get(i).get("creditHourLow").asText() + " ");
+                                System.out.print("Number of Students" + termPageData.get(i).get("enrollment").asText() + " ");
+                                System.out.println(faculty.get(j).get("displayName").asText());
+                            }
+                        }
+                    }
+                }
+                totalCount -= 500;
+                pageOffset += 500;
+                fileName = term + "-" + pageOffset + ".json";
+            } while (totalCount > 0);
+        }
     }
 
     public void buildFileFromJsonString(String fileName, String courseDataOfTerm) throws IOException {
@@ -167,6 +147,10 @@ public class BannerUtils {
     }
 
     public void initTermsFromFile(String fileName) throws IOException {
+        if (!new File(fileName).exists()) {
+            String jsonTerms = IOUtils.toString(new URL(URL_API_GET_TERMS), "UTF-8");
+            buildFileFromJsonString(fileName, jsonTerms);
+        }
         JsonNode jsonNode = objectMapper.readTree(new File(fileName));
         int[] terms = new int[jsonNode.size()];
         for (int i = 0; i < terms.length; i++) {
@@ -183,6 +167,7 @@ public class BannerUtils {
             // Set up the request
             URL url = new URL(urlParam);
             HttpURLConnection httpURLConnection = (HttpURLConnection) url.openConnection();
+            httpURLConnection.setRequestMethod("POST");
             httpURLConnection.setConnectTimeout(5000);
             // Add headers to the request
             httpURLConnection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
@@ -190,7 +175,6 @@ public class BannerUtils {
             httpURLConnection.setRequestProperty("accept", "*/*");
             httpURLConnection.setDoOutput(true);
             httpURLConnection.setDoInput(true);
-            httpURLConnection.setRequestMethod("POST");
             //Send the request
             OutputStream outputStream = httpURLConnection.getOutputStream();
             outputStream.write(("term=" + termParam).getBytes("UTF-8"));
@@ -220,13 +204,13 @@ public class BannerUtils {
             // Set up request
             URL url = new URL(urlParam);
             HttpURLConnection httpURLConnection = (HttpURLConnection) url.openConnection();
+            httpURLConnection.setRequestMethod("GET");
             httpURLConnection.setConnectTimeout(5000);
             // Add headers to the request
             httpURLConnection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
             httpURLConnection.setRequestProperty("Cookie", cookie);
             httpURLConnection.setDoOutput(true);
             httpURLConnection.setDoInput(true);
-            httpURLConnection.setRequestMethod("GET");
             //Send the request
             OutputStream outputStream = httpURLConnection.getOutputStream();
             outputStream.close();
